@@ -1,6 +1,6 @@
 /*******************************************************************************
  * 文件名称: il2cpp_reflector
- * 项目名称: TEFModLoader
+ * 项目名称: IL2CppReflector
  * 创建时间: 25-7-20
  * 作者: EternalFuture゙
  * Github: https://github.com/2079541547
