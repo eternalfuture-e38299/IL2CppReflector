@@ -67,7 +67,7 @@ bool IL2CppReflector::Method::IsInstance() const {
         return false;
     }
     bool result = Il2CppAPI::il2cpp_method_is_instance(_method);
-    ILRL_LOG_DEBUG("[Method::IsInstance] Method is instance method:", _method, "Result:", result);
+    ILRL_LOG_DEBUG("[Method::IsInstance] Method is instance method: ", _method, " Result: ", result);
     return result;
 }
 
@@ -100,8 +100,8 @@ void* IL2CppReflector::Method::GetMethodPointer() const {
     }
 
     void* result = *static_cast<void**>(_method);
-    ILRL_LOG_DEBUG("[Method::GetMethodPointer] Method implementation address:",
-                  _method, "Pointer:", result);
+    ILRL_LOG_DEBUG("[Method::GetMethodPointer] Method: ",
+                   Il2CppAPI::il2cpp_method_get_name(_method), " Pointer: ", result);
     return result;
 }
 

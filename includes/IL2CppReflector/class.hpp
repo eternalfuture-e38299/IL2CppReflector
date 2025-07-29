@@ -51,7 +51,6 @@ namespace IL2CppReflector {
 
         Class(const std::string &Namespace, const std::string &Name, const void *Image = nullptr);
 
-
         [[nodiscard]] std::string ToString() const;
 
         [[nodiscard]] std::string GetNamespace() const;

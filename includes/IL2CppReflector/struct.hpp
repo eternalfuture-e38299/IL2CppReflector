@@ -108,18 +108,14 @@ namespace UnityStruct {
     };
 
     struct string {
-        void *m_class{};
-        void *m_monitor{};
-        int m_length{};
-        wchar_t m_data[];
-
         string() = default;
+        explicit string(void* String): _string(String) {}
 
-        static string *create(const std::string &str);
+        static void *create(const std::string &str);
 
         std::string str();
 
-        wchar_t &at(size_t pos);
+        char16_t at(size_t pos);
 
         [[nodiscard]] bool equals(const string &other) const;
 
@@ -129,12 +125,14 @@ namespace UnityStruct {
 
         [[nodiscard]] size_t size() const;
 
-        [[nodiscard]] const wchar_t *c_str() const;
+        [[nodiscard]] const char16_t * c_str() const;
 
-        [[nodiscard]] const wchar_t *data() const;
+        [[nodiscard]] const char16_t * data() const;
 
         bool operator==(const string &other) const { return equals(other); }
         bool operator!=(const string &other) const { return !equals(other); }
+    private:
+        void* _string{};
     };
 
     template<typename Key, typename Value>
@@ -322,8 +320,4 @@ Key &UnityStruct::dictionary<Key, Value>::get_key_by_index(int index) {
 template<typename Key, typename Value>
 Value &UnityStruct::dictionary<Key, Value>::get_value_by_index(int index) {
     return m_entries->at(index)->m_value;
-}
-
-inline UnityStruct::string *UnityStruct::string::create(const std::string &str) {
-    return static_cast<string *>(Il2CppAPI::il2cpp_string_new(str.c_str()));
 }

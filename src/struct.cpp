@@ -30,40 +30,92 @@
 #include "IL2CppReflector/struct.hpp"
 #include "utfcpp/utf8.h"
 
-std::string UnityStruct::string::str() {
-    std::string utf8String{};
-    utf8::unchecked::utf16to8(m_data, m_data + m_length, std::back_inserter(utf8String));
-    return utf8String;
+#include "IL2CppReflector/logger.hpp"
+
+void* UnityStruct::string::create(const std::string& str) {
+    void* il2cppStr = Il2CppAPI::il2cpp_string_new_len(str.data(), str.length());
+    if (!il2cppStr) {
+        ILRL_LOG_ERROR("Failed to create IL2CPP string");
+        return nullptr;
+    }
+    return static_cast<string*>(il2cppStr);
 }
 
-wchar_t &UnityStruct::string::at(const size_t pos) {
-    if (pos >= static_cast<size_t>(m_length)) {
+std::string UnityStruct::string::str() {
+    if (!_string) {
+        ILRL_LOG_ERROR("Null IL2CPP string encountered");
+        return "";
+    }
+
+    int32_t length = Il2CppAPI::il2cpp_string_length(_string);
+    const auto* chars = reinterpret_cast<const char16_t*>(
+            Il2CppAPI::il2cpp_string_chars(_string)
+    );
+
+    std::string utf8Str;
+    try {
+        utf8::utf16to8(chars, chars + length, std::back_inserter(utf8Str));
+    } catch (const utf8::exception& e) {
+        ILRL_LOG_ERROR("UTF-16 to UTF-8 conversion failed: ", e.what());
+        return "";
+    }
+
+    return utf8Str;
+}
+
+char16_t UnityStruct::string::at(size_t pos) {
+    if (!_string) {
+        throw std::runtime_error("Null IL2CPP string");
+    }
+
+    int32_t length = Il2CppAPI::il2cpp_string_length(_string);
+    if (pos >= static_cast<size_t>(length)) {
         throw std::out_of_range("string index out of range");
     }
-    return m_data[pos];
+
+    const auto* chars = reinterpret_cast<const char16_t*>(
+            Il2CppAPI::il2cpp_string_chars(_string)
+    );
+    return chars[pos];
 }
 
-bool UnityStruct::string::equals(const string &other) const {
-    if (m_length != other.m_length) return false;
-    return std::memcmp(m_data, other.m_data, m_length * sizeof(wchar_t)) == 0;
+bool UnityStruct::string::equals(const string& other) const {
+    if (!_string || !other._string) return false;
+
+    int32_t len1 = Il2CppAPI::il2cpp_string_length(_string);
+    int32_t len2 = Il2CppAPI::il2cpp_string_length(other._string);
+    if (len1 != len2) return false;
+
+    const char16_t* chars1 = reinterpret_cast<const char16_t*>(
+            Il2CppAPI::il2cpp_string_chars(_string)
+    );
+    const char16_t* chars2 = reinterpret_cast<const char16_t*>(
+            Il2CppAPI::il2cpp_string_chars(other._string)
+    );
+
+    return std::memcmp(chars1, chars2, len1 * sizeof(char16_t)) == 0;
 }
 
 bool UnityStruct::string::empty() const {
-    return m_length == 0;
+    if (!_string) return true;
+    return Il2CppAPI::il2cpp_string_length(_string) == 0;
 }
 
 size_t UnityStruct::string::length() const {
-    return m_length;
+    if (!_string) return 0;
+    return static_cast<size_t>(Il2CppAPI::il2cpp_string_length(_string));
 }
 
 size_t UnityStruct::string::size() const {
-    return m_length * sizeof(wchar_t);
+    if (!_string) return 0;
+    return static_cast<size_t>(Il2CppAPI::il2cpp_string_length(_string)) * sizeof(char16_t);
 }
 
-const wchar_t *UnityStruct::string::c_str() const {
-    return m_data;
+const char16_t* UnityStruct::string::c_str() const {
+    if (!_string) return nullptr;
+    return reinterpret_cast<const char16_t*>(Il2CppAPI::il2cpp_string_chars(_string));
 }
 
-const wchar_t *UnityStruct::string::data() const {
-    return m_data;
+const char16_t* UnityStruct::string::data() const {
+    return c_str();
 }

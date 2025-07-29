@@ -83,15 +83,69 @@ const void *IL2CppReflector::GetImage(const std::string &Name) {
     return nullptr;
 }
 
-IL2CppReflector::Class::Class(const std::string &Namespace, const std::string &Name, const void *Image) {
-    ILRL_LOG_DEBUG("Constructing Class:", Namespace, ".", Name, " from image:", Image);
-
-    _class = Il2CppAPI::il2cpp_class_from_name(Image, Namespace.c_str(), Name.c_str());
-    if (_class) {
-        ILRL_LOG_INFO("Successfully located class", Namespace, ".", Name);
-    } else {
-        ILRL_LOG_ERROR("Failed to find class", Namespace, ".", Name, "in image", Image);
+IL2CppReflector::Class::Class(const std::string& Namespace, const std::string& Name, const void* Image) {
+    // Validate input parameters
+    if (Name.empty()) {
+        ILRL_LOG_ERROR("[Class::Class] Empty class name provided");
+        return;
     }
+
+    ILRL_LOG_DEBUG("[Class::Class] Searching for class: ", Namespace, ".", Name,
+                   "in image: ", Image ? " specified " : "all assemblies");
+
+    // Case 1: Specific image provided
+    if (Image != nullptr) {
+        _class = Il2CppAPI::il2cpp_class_from_name(Image, Namespace.c_str(), Name.c_str());
+        if (_class) {
+            ILRL_LOG_INFO("[Class::Class] Found class in specified image: ",
+                          Namespace, ".", Name, " at address: ", _class);
+            return;
+        }
+        ILRL_LOG_WARN("[Class::Class] Class not found in specified image: ",
+                      Namespace, ".", Name, " image: ", Image);
+        return;
+    }
+
+    // Case 2: Search all assemblies
+    const auto domain = Il2CppAPI::il2cpp_domain_get();
+    if (!domain) {
+        ILRL_LOG_ERROR("[Class::Class] Failed to get current app domain");
+        return;
+    }
+
+    size_t assemblies_count = 0;
+    const auto assemblies = Il2CppAPI::il2cpp_domain_get_assemblies(domain, &assemblies_count);
+    if (!assemblies || assemblies_count == 0) {
+        ILRL_LOG_ERROR("[Class::Class] No assemblies found in current domain");
+        return;
+    }
+
+    ILRL_LOG_DEBUG("[Class::Class] Scanning ", assemblies_count, " assemblies...");
+
+    for (size_t i = 0; i < assemblies_count; ++i) {
+        const auto assembly = assemblies[i];
+        const auto image = Il2CppAPI::il2cpp_assembly_get_image(assembly);
+        if (!image) {
+            ILRL_LOG_WARN("[Class::Class] Assembly at index ", i, " has no image");
+            continue;
+        }
+
+        const char* assembly_name = Il2CppAPI::il2cpp_image_get_name(image);
+        ILRL_LOG_TRACE("[Class::Class] Checking assembly: ",
+                       assembly_name ? assembly_name : "unnamed", " at index: ", i);
+
+        void* found_class = Il2CppAPI::il2cpp_class_from_name(image, Namespace.c_str(), Name.c_str());
+        if (found_class) {
+            _class = found_class;
+            ILRL_LOG_INFO("[Class::Class] Found class in assembly: ",
+                          assembly_name ? assembly_name : "unnamed",
+                          " at index: ", i, " address: ", _class);
+            return;
+        }
+    }
+
+    ILRL_LOG_ERROR("[Class::Class] Failed to locate class: ", Namespace, ".", Name,
+                   " after scanning ", assemblies_count, " assemblies");
 }
 
 std::string IL2CppReflector::Class::ToString() const {
@@ -474,7 +528,7 @@ void *IL2CppReflector::Class::CreateNewInstance() const {
 
     void *instance = Il2CppAPI::il2cpp_object_new(_class);
     if (instance) {
-        ILRL_LOG_INFO("Created new instance of ", ToString(), "at", instance);
+        ILRL_LOG_INFO("Created new instance of ", ToString(), " at ", instance);
     } else {
         ILRL_LOG_ERROR("Failed to create instance of ", ToString());
     }

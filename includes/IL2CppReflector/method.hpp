@@ -83,8 +83,8 @@ namespace IL2CppReflector {
                 const bool paramMatch = (expectedArgs == actualArgs);
 
                 if (!paramMatch) {
-                    ILRL_LOG_WARN("[Method::Invoke] Parameter count mismatch. Expected:",
-                                 expectedArgs, "Actual:", actualArgs);
+                    ILRL_LOG_WARN("[Method::Invoke] Parameter count mismatch. Expected: ",
+                                 expectedArgs, " Actual: ", actualArgs);
                 }
 
                 if (IsInstance()) {
@@ -97,8 +97,8 @@ namespace IL2CppReflector {
                         }
                     }
 
-                    ILRL_LOG_DEBUG("[Method::Invoke] Invoking instance method:", _method,
-                                  "Instance:", _instance, "Param count:", actualArgs);
+                    ILRL_LOG_DEBUG("[Method::Invoke] Invoking instance method: ", _method,
+                                  "Instance: ", _instance, " Param count: ", actualArgs);
 
                     if (paramMatch) {
                         return reinterpret_cast<Ret(*)(void*, Args..., void*)>(GetMethodPointer())(
@@ -149,6 +149,7 @@ void *IL2CppReflector::Class::CreateNewObjectParameters(Args... args) {
         return instance;  // Return instance even if construction fails
     }
 
+    ctor.SetInstance(instance);
     ILRL_LOG_DEBUG("[Class::CreateNewObjectParameters] Invoking constructor");
     ctor.Invoke<void>(args...);
 
