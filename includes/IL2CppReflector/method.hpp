@@ -97,24 +97,20 @@ namespace IL2CppReflector {
                         }
                     }
 
-                    ILRL_LOG_DEBUG("[Method::Invoke] Invoking instance method: ", _method,
-                                  "Instance: ", _instance, " Param count: ", actualArgs);
-
                     if (paramMatch) {
                         return reinterpret_cast<Ret(*)(void*, Args..., void*)>(GetMethodPointer())(
                             _instance, args..., _method);
                     }
+
                     return reinterpret_cast<Ret(*)(void*, Args...)>(GetMethodPointer())(
                         _instance, args...);
                 }
-
-                ILRL_LOG_DEBUG("[Method::Invoke] Invoking static method:", _method,
-                              "Param count:", actualArgs);
 
                 if (paramMatch) {
                     return reinterpret_cast<Ret(*)(Args..., void*)>(GetMethodPointer())(
                         args..., _method);
                 }
+
                 return reinterpret_cast<Ret(*)(Args...)>(GetMethodPointer())(args...);
             }
     };
@@ -134,9 +130,6 @@ namespace IL2CppReflector {
 
 template<typename ... Args>
 void *IL2CppReflector::Class::CreateNewObjectParameters(Args... args) {
-    ILRL_LOG_DEBUG("[Class::CreateNewObjectParameters] Creating new object with",
-                 sizeof...(Args), "parameters");
-
     const auto instance = CreateNewInstance();
     if (!instance) {
         ILRL_LOG_ERROR("[Class::CreateNewObjectParameters] Failed to create new instance");
@@ -150,7 +143,6 @@ void *IL2CppReflector::Class::CreateNewObjectParameters(Args... args) {
     }
 
     ctor.SetInstance(instance);
-    ILRL_LOG_DEBUG("[Class::CreateNewObjectParameters] Invoking constructor");
     ctor.Invoke<void>(args...);
 
     return instance;

@@ -49,7 +49,7 @@ namespace IL2CppReflector {
 
         explicit Class(void *m_class): _class(m_class) {}
 
-        Class(const std::string &Namespace, const std::string &Name, const void *Image = nullptr);
+        explicit Class(const std::string &Namespace, const std::string &Name, const void *Image = nullptr);
 
         [[nodiscard]] std::string ToString() const;
 
@@ -87,10 +87,15 @@ namespace IL2CppReflector {
 
         [[nodiscard]] Class GetGeneric(const std::vector<void *> &templateTypes) const;
 
+        [[nodiscard]] void* GetMonoType() const;
+
         [[nodiscard]] void *CreateNewInstance() const;
 
         template<typename... Args>
         [[nodiscard]] void *CreateNewObjectParameters(Args... args);
+
+        [[nodiscard]] void* GetIl2cppClass() const;
     };
 
+    void* CreateTypeArrayFromVector(const std::vector<void*>& typeObjects);
 }

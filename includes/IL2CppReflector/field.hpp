@@ -79,28 +79,21 @@ T IL2CppReflector::Field::GetValue() {
 
     // Handle special field types
     if (IsConst() || IsThreadStatic()) {
-        ILRL_LOG_DEBUG("[Field::GetValue] Getting value of special field:", _field,
-                      "Type:", typeid(T).name(), "IsConst:", IsConst(), "IsThreadStatic:", IsThreadStatic());
-
         T val{};
         Il2CppAPI::il2cpp_field_static_get_value(_field, reinterpret_cast<void*>(&val));
         return val;
     }
 
     // Normal field case
-    if (const T* ptr = static_cast<const T*>(GetFieldPtr()); ptr != nullptr) {
-        ILRL_LOG_DEBUG("[Field::GetValue] Successfully got field value:", _field,
-                      "Type:", typeid(T).name(), "Address:", ptr, "Value:", *ptr);
+    if (const T* ptr = static_cast<const T*>(GetFieldPtr()); ptr != nullptr)
         return *ptr;
-    }
 
-    ILRL_LOG_ERROR("[Field::GetValue] Failed to get field pointer for:", _field);
+    ILRL_LOG_ERROR("[Field::GetValue] Failed to get field pointer for: ", _field);
     return T{};
 }
 
 template<typename T>
 T IL2CppReflector::Field::GetValue(void* Instance) {
-    ILRL_LOG_DEBUG("[Field::GetValue] Getting field value with instance:", _field, "Instance:", Instance);
     SetInstance(Instance);
     return GetValue<T>();
 }
@@ -119,29 +112,21 @@ void IL2CppReflector::Field::SetValue(T value) {
 
     // Handle thread static fields
     if (IsThreadStatic()) {
-        ILRL_LOG_DEBUG("[Field::SetValue] Setting thread static field:", _field,
-                      "Type:", typeid(T).name(), "Value:", value);
-
         Il2CppAPI::il2cpp_field_static_set_value(_field, &value);
-
         return;
     }
 
     // Normal field case
     if (T* ptr = static_cast<T*>(GetFieldPtr()); ptr != nullptr) {
         *ptr = value;
-        ILRL_LOG_DEBUG("[Field::SetValue] Successfully set field value:", _field,
-                      "Type:", typeid(T).name(), "Address:", ptr, "New Value:", value);
         return;
     }
 
-    ILRL_LOG_ERROR("[Field::SetValue] Failed to get field pointer for:", _field);
+    ILRL_LOG_ERROR("[Field::SetValue] Failed to get field pointer for: ", _field);
 }
 
 template<typename T>
 void IL2CppReflector::Field::SetValue(void* Instance, T value) {
-    ILRL_LOG_DEBUG("[Field::SetValue] Setting field value with instance:", _field,
-                  "Instance:", Instance, "Value:", value);
     SetInstance(Instance);
     SetValue<T>(value);
 }

@@ -123,7 +123,7 @@ int IL2CppReflector::hook_il2cpp_init(const char* domain_name) {
     }
 
     // Execute registered events
-    ILRL_LOG_DEBUG("[hook_il2cpp_init] Executing", OnLoadedEvents.size(), "registered events");
+    ILRL_LOG_DEBUG("[hook_il2cpp_init] Executing", OnLoadedEvents.size(), "v");
     for (const auto& on_loaded_event : OnLoadedEvents) {
         try {
             on_loaded_event();
@@ -240,7 +240,7 @@ bool IL2CppReflector::init_ref() {
     }
 
     ILRL_LOG_DEBUG("Initializing MakeGenericType");
-    MakeGenericType = Class("System", "RuntimeType", image).GetMethod("MakeGenericType");
+    MakeGenericType = Class("System", "RuntimeType", image).GetMethod("MakeGenericType", 2);
     if (!MakeGenericType.IsValid()) {
         ILRL_LOG_ERROR("Failed to initialize MakeGenericType");
         return false;

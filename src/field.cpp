@@ -43,12 +43,11 @@ bool IL2CppReflector::Field::IsStatic() const {
 
     const auto type = Il2CppAPI::il2cpp_field_get_type(_field);
     if (!type) {
-        ILRL_LOG_ERROR("[Field::IsStatic] Failed to get field type for field:", _field);
+        ILRL_LOG_ERROR("[Field::IsStatic] Failed to get field type for field: ", _field);
         return false;
     }
 
-    bool result = (Il2CppAPI::il2cpp_type_get_attrs(type) & 0x0010) != 0 && !IsThreadStatic();
-    ILRL_LOG_DEBUG("[Field::IsStatic] Field is static:", _field, "Result:", result);
+    const bool result = (Il2CppAPI::il2cpp_type_get_attrs(type) & 0x0010) != 0 && !IsThreadStatic();
     return result;
 }
 
@@ -60,12 +59,11 @@ bool IL2CppReflector::Field::IsConst() const {
 
     const auto type = Il2CppAPI::il2cpp_field_get_type(_field);
     if (!type) {
-        ILRL_LOG_ERROR("[Field::IsConst] Failed to get field type for field:", _field);
+        ILRL_LOG_ERROR("[Field::IsConst] Failed to get field type for field: ", _field);
         return false;
     }
 
-    bool result = (Il2CppAPI::il2cpp_type_get_attrs(type) & 0x0040) != 0;
-    ILRL_LOG_DEBUG("[Field::IsConst] Field is const:", _field, "Result:", result);
+    const bool result = (Il2CppAPI::il2cpp_type_get_attrs(type) & 0x0040) != 0;
     return result;
 }
 
@@ -75,8 +73,7 @@ bool IL2CppReflector::Field::IsThreadStatic() const {
         return false;
     }
 
-    bool result = Il2CppAPI::il2cpp_field_get_offset(_field) == -1;
-    ILRL_LOG_DEBUG("[Field::IsThreadStatic] Field is thread static:", _field, "Result:", result);
+    const bool result = Il2CppAPI::il2cpp_field_get_offset(_field) == -1;
     return result;
 }
 
@@ -87,7 +84,6 @@ void IL2CppReflector::Field::SetInstance(void* Instance) {
     }
 
     _instance = Instance;
-    ILRL_LOG_DEBUG("[Field::SetInstance] Instance set to:", Instance, "for field:", _field);
 }
 
 void* IL2CppReflector::Field::GetFieldPtr() const {
@@ -121,8 +117,7 @@ void* IL2CppReflector::Field::GetFieldPtr() const {
             return nullptr;
         }
 
-        auto result = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(staticData) + offset);
-        ILRL_LOG_DEBUG("[Field::GetFieldPtr] Static field pointer:", _field, "Address:", result);
+        const auto result = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(staticData) + offset);
         return result;
     }
 
@@ -133,9 +128,6 @@ void* IL2CppReflector::Field::GetFieldPtr() const {
 
     const bool isValueType = Il2CppAPI::il2cpp_type_get_type(p_class) == 0x11;
     const uintptr_t addr = reinterpret_cast<uintptr_t>(_instance) + offset - (isValueType ? sizeof(void*) : 0x0);
-    auto result = reinterpret_cast<void*>(addr);
 
-    ILRL_LOG_DEBUG("[Field::GetFieldPtr] Instance field pointer:", _field,
-                  "Instance:", _instance, "Address:", result, "IsValueType:", isValueType);
-    return result;
+    return reinterpret_cast<void*>(addr);
 }

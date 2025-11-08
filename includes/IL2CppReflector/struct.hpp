@@ -42,7 +42,7 @@ namespace UnityStruct {
         void *m_class{};
         void *m_monitor{};
         void *m_bounds{};
-        uintptr_t m_length{};
+        int m_length{};
         T *m_values;
 
         array() = default;
@@ -60,6 +60,8 @@ namespace UnityStruct {
         };
 
         static std::unique_ptr<array, array_deleter> create(const std::vector<T> &vec);
+
+        static array* create_from_il2cpp_array(int capacity, void *il2cpp_array);
 
         T &at(size_t index);
 
@@ -113,9 +115,9 @@ namespace UnityStruct {
 
         static void *create(const std::string &str);
 
-        std::string str();
+        [[nodiscard]] std::string str() const;
 
-        char16_t at(size_t pos);
+        [[nodiscard]] char16_t at(size_t pos) const;
 
         [[nodiscard]] bool equals(const string &other) const;
 
@@ -198,6 +200,14 @@ std::unique_ptr<UnityStruct::array<T>, typename UnityStruct::array<T>::array_del
         ::operator delete(buffer);
         throw;
     }
+}
+
+template<typename T>
+UnityStruct::array<T>* UnityStruct::array<T>::create_from_il2cpp_array(int capacity, void *il2cpp_array) {
+    memset(il2cpp_array, 0, sizeof(array) + sizeof(T) * capacity);
+    static_cast<array*>(il2cpp_array)->m_length = capacity;
+    static_cast<array*>(il2cpp_array)->m_class = nullptr;
+    return static_cast<array*>(il2cpp_array);
 }
 
 template<typename T>

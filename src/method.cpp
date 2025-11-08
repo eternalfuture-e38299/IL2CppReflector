@@ -36,9 +36,7 @@
 #include "IL2CppReflector/struct.hpp"
 
 void IL2CppReflector::Method::SetInstance(void* Instance) {
-    ILRL_LOG_DEBUG("[Method::SetInstance] Setting instance to:", Instance);
     _instance = Instance;
-    ILRL_LOG_TRACE("[Method::SetInstance] Instance set successfully");
 }
 
 bool IL2CppReflector::Method::IsGeneric() const {
@@ -46,8 +44,7 @@ bool IL2CppReflector::Method::IsGeneric() const {
         ILRL_LOG_WARN("[Method::IsGeneric] Called on null method pointer");
         return false;
     }
-    bool result = Il2CppAPI::il2cpp_method_is_generic(_method);
-    ILRL_LOG_DEBUG("[Method::IsGeneric] Method is generic:", _method, "Result:", result);
+    const bool result = Il2CppAPI::il2cpp_method_is_generic(_method);
     return result;
 }
 
@@ -56,8 +53,7 @@ bool IL2CppReflector::Method::IsInflated() const {
         ILRL_LOG_WARN("[Method::IsInflated] Called on null method pointer");
         return false;
     }
-    bool result = Il2CppAPI::il2cpp_method_is_inflated(_method);
-    ILRL_LOG_DEBUG("[Method::IsInflated] Method is inflated:", _method, "Result:", result);
+    const bool result = Il2CppAPI::il2cpp_method_is_inflated(_method);
     return result;
 }
 
@@ -66,9 +62,7 @@ bool IL2CppReflector::Method::IsInstance() const {
         ILRL_LOG_WARN("[Method::IsInstance] Called on null method pointer");
         return false;
     }
-    bool result = Il2CppAPI::il2cpp_method_is_instance(_method);
-    ILRL_LOG_DEBUG("[Method::IsInstance] Method is instance method: ", _method, " Result: ", result);
-    return result;
+    return Il2CppAPI::il2cpp_method_is_instance(_method);
 }
 
 std::string IL2CppReflector::Method::GetReturnType() const {
@@ -79,17 +73,16 @@ std::string IL2CppReflector::Method::GetReturnType() const {
 
     void* returnType = Il2CppAPI::il2cpp_method_get_return_type(_method);
     if (!returnType) {
-        ILRL_LOG_ERROR("[Method::GetReturnType] Failed to get return type for method:", _method);
+        ILRL_LOG_ERROR("[Method::GetReturnType] Failed to get return type for method: ", _method);
         return "unknown";
     }
 
     const char* typeName = Il2CppAPI::il2cpp_type_get_name(returnType);
     if (!typeName) {
-        ILRL_LOG_ERROR("[Method::GetReturnType] Failed to get type name for return type:", returnType);
+        ILRL_LOG_ERROR("[Method::GetReturnType] Failed to get type name for return type: ", returnType);
         return "unnamed";
     }
 
-    ILRL_LOG_DEBUG("[Method::GetReturnType] Method return type:", _method, "Type:", typeName);
     return typeName;
 }
 
@@ -99,14 +92,10 @@ void* IL2CppReflector::Method::GetMethodPointer() const {
         return nullptr;
     }
 
-    void* result = *static_cast<void**>(_method);
-    ILRL_LOG_DEBUG("[Method::GetMethodPointer] Method: ",
-                   Il2CppAPI::il2cpp_method_get_name(_method), " Pointer: ", result);
-    return result;
+    return *static_cast<void**>(_method);
 }
 
 void* IL2CppReflector::Method::GetMethodInfo() const {
-    ILRL_LOG_DEBUG("[Method::GetMethodInfo] Returning raw method info:", _method);
     return _method;
 }
 
@@ -117,33 +106,30 @@ IL2CppReflector::Method IL2CppReflector::Method::GetGeneric(const std::vector<vo
     }
 
     if (!IsGeneric()) {
-        ILRL_LOG_ERROR("[Method::GetGeneric] Method is not generic:", _method);
+        ILRL_LOG_ERROR("[Method::GetGeneric] Method is not generic: ", _method);
         return *this;
     }
 
-    ILRL_LOG_DEBUG("[Method::GetGeneric] Creating generic method:",
-                  _method, "Type arguments count:", templateTypes.size());
-
     void* MethodClass = Il2CppAPI::il2cpp_method_get_declaring_type(_method);
     if (!MethodClass) {
-        ILRL_LOG_ERROR("[Method::GetGeneric] Failed to get declaring type for method:", _method);
+        ILRL_LOG_ERROR("[Method::GetGeneric] Failed to get declaring type for method: ", _method);
         return *this;
     }
 
     void* reflectionMethod = Il2CppAPI::il2cpp_method_get_object(_method, MethodClass);
     if (!reflectionMethod) {
-        ILRL_LOG_ERROR("[Method::GetGeneric] Failed to get method object for method:", _method);
+        ILRL_LOG_ERROR("[Method::GetGeneric] Failed to get method object for method: ", _method);
         return *this;
     }
 
-    const auto args = UnityStruct::array<void*>::create(templateTypes);
+    const auto args = CreateTypeArrayFromVector(templateTypes);
     if (!args) {
         ILRL_LOG_ERROR("[Method::GetGeneric] Failed to create type arguments array");
         return *this;
     }
 
     MakeGenericMethod_impl.SetInstance(reflectionMethod);
-    const auto genericMethod = MakeGenericMethod_impl.Invoke<void*>(args.get());
+    const auto genericMethod = MakeGenericMethod_impl.Invoke<void*>(args);
     if (!genericMethod) {
         ILRL_LOG_ERROR("[Method::GetGeneric] MakeGenericMethod invocation failed");
         return *this;
@@ -155,6 +141,5 @@ IL2CppReflector::Method IL2CppReflector::Method::GetGeneric(const std::vector<vo
         return *this;
     }
 
-    ILRL_LOG_DEBUG("[Method::GetGeneric] Successfully created generic method instance:", concreteMethod);
     return Method(concreteMethod);
 }

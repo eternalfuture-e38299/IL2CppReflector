@@ -41,14 +41,14 @@ void* UnityStruct::string::create(const std::string& str) {
     return static_cast<string*>(il2cppStr);
 }
 
-std::string UnityStruct::string::str() {
+std::string UnityStruct::string::str() const {
     if (!_string) {
         ILRL_LOG_ERROR("Null IL2CPP string encountered");
         return "";
     }
 
-    int32_t length = Il2CppAPI::il2cpp_string_length(_string);
-    const auto* chars = reinterpret_cast<const char16_t*>(
+    const int32_t length = Il2CppAPI::il2cpp_string_length(_string);
+    const auto* chars = static_cast<const char16_t*>(
             Il2CppAPI::il2cpp_string_chars(_string)
     );
 
@@ -63,17 +63,18 @@ std::string UnityStruct::string::str() {
     return utf8Str;
 }
 
-char16_t UnityStruct::string::at(size_t pos) {
+char16_t UnityStruct::string::at(size_t pos) const {
     if (!_string) {
-        throw std::runtime_error("Null IL2CPP string");
+        ILRL_LOG_ERROR("Null IL2CPP string");
+        return '\0';
     }
 
-    int32_t length = Il2CppAPI::il2cpp_string_length(_string);
-    if (pos >= static_cast<size_t>(length)) {
-        throw std::out_of_range("string index out of range");
+    if (const int32_t length = Il2CppAPI::il2cpp_string_length(_string); pos >= static_cast<size_t>(length)) {
+        ILRL_LOG_ERROR("string index out of range");
+        return '\0';
     }
 
-    const auto* chars = reinterpret_cast<const char16_t*>(
+    const auto* chars = static_cast<const char16_t*>(
             Il2CppAPI::il2cpp_string_chars(_string)
     );
     return chars[pos];
@@ -82,14 +83,13 @@ char16_t UnityStruct::string::at(size_t pos) {
 bool UnityStruct::string::equals(const string& other) const {
     if (!_string || !other._string) return false;
 
-    int32_t len1 = Il2CppAPI::il2cpp_string_length(_string);
-    int32_t len2 = Il2CppAPI::il2cpp_string_length(other._string);
-    if (len1 != len2) return false;
+    const int32_t len1 = Il2CppAPI::il2cpp_string_length(_string);
+    if (const int32_t len2 = Il2CppAPI::il2cpp_string_length(other._string); len1 != len2) return false;
 
-    const char16_t* chars1 = reinterpret_cast<const char16_t*>(
+    const auto* chars1 = static_cast<const char16_t*>(
             Il2CppAPI::il2cpp_string_chars(_string)
     );
-    const char16_t* chars2 = reinterpret_cast<const char16_t*>(
+    const auto* chars2 = static_cast<const char16_t*>(
             Il2CppAPI::il2cpp_string_chars(other._string)
     );
 
@@ -113,7 +113,7 @@ size_t UnityStruct::string::size() const {
 
 const char16_t* UnityStruct::string::c_str() const {
     if (!_string) return nullptr;
-    return reinterpret_cast<const char16_t*>(Il2CppAPI::il2cpp_string_chars(_string));
+    return static_cast<const char16_t*>(Il2CppAPI::il2cpp_string_chars(_string));
 }
 
 const char16_t* UnityStruct::string::data() const {

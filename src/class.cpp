@@ -42,10 +42,12 @@
 #include "IL2CppReflector/method.hpp"
 #include "IL2CppReflector/property.hpp"
 #include "IL2CppReflector/struct.hpp"
+#include "IL2CppReflector/api/array.hpp"
+#include "IL2CppReflector/api/gc.hpp"
+#include "IL2CppReflector/api/il2cpp.hpp"
+#include "IL2CppReflector/api/vm_runtime_info.hpp"
 
 const void *IL2CppReflector::GetImage(const std::string &Name) {
-    ILRL_LOG_DEBUG("Attempting to get image for assembly:", Name);
-
     const auto domain = Il2CppAPI::il2cpp_domain_get();
     if (!domain) {
         ILRL_LOG_ERROR("Failed to get current app domain");
@@ -59,12 +61,9 @@ const void *IL2CppReflector::GetImage(const std::string &Name) {
         return nullptr;
     }
 
-    ILRL_LOG_DEBUG("Scanning ", assemblies_count, " assemblies...");
-
     for (size_t i = 0; i < assemblies_count; ++i) {
         const auto image = Il2CppAPI::il2cpp_assembly_get_image(assemblies[i]);
         if (!image) {
-            ILRL_LOG_WARN("Assembly at index", i, "has no image");
             continue;
         }
 
@@ -72,81 +71,61 @@ const void *IL2CppReflector::GetImage(const std::string &Name) {
 
         if (const auto nameNoExt = Il2CppAPI::il2cpp_image_get_filename(image);
                 (name && Name == name) || (nameNoExt && Name == nameNoExt)) {
-            ILRL_LOG_INFO("Found matching assembly:", name ? name : nameNoExt, "(Image:", image, ")");
             return image;
-        }
-
-        ILRL_LOG_DEBUG("Assembly", name ? name : "unnamed", "doesn't match target", Name);
+                }
     }
 
-    ILRL_LOG_ERROR("Assembly not found:", Name, "(Searched", assemblies_count, "assemblies)");
+    ILRL_LOG_ERROR("Assembly not found:", Name);
     return nullptr;
 }
 
 IL2CppReflector::Class::Class(const std::string& Namespace, const std::string& Name, const void* Image) {
     // Validate input parameters
     if (Name.empty()) {
-        ILRL_LOG_ERROR("[Class::Class] Empty class name provided");
+        ILRL_LOG_ERROR("[Class] Empty class name provided");
         return;
     }
 
-    ILRL_LOG_DEBUG("[Class::Class] Searching for class: ", Namespace, ".", Name,
-                   "in image: ", Image ? " specified " : "all assemblies");
-
     // Case 1: Specific image provided
-    if (Image != nullptr) {
+    if (Image) {
         _class = Il2CppAPI::il2cpp_class_from_name(Image, Namespace.c_str(), Name.c_str());
         if (_class) {
-            ILRL_LOG_INFO("[Class::Class] Found class in specified image: ",
-                          Namespace, ".", Name, " at address: ", _class);
             return;
         }
-        ILRL_LOG_WARN("[Class::Class] Class not found in specified image: ",
-                      Namespace, ".", Name, " image: ", Image);
+        ILRL_LOG_WARN("[Class] Not found in specified image: ", Namespace, ".", Name);
         return;
     }
 
     // Case 2: Search all assemblies
     const auto domain = Il2CppAPI::il2cpp_domain_get();
     if (!domain) {
-        ILRL_LOG_ERROR("[Class::Class] Failed to get current app domain");
+        ILRL_LOG_ERROR("[Class] Failed to get app domain");
         return;
     }
 
     size_t assemblies_count = 0;
     const auto assemblies = Il2CppAPI::il2cpp_domain_get_assemblies(domain, &assemblies_count);
     if (!assemblies || assemblies_count == 0) {
-        ILRL_LOG_ERROR("[Class::Class] No assemblies found in current domain");
+        ILRL_LOG_ERROR("[Class] No assemblies found");
         return;
     }
-
-    ILRL_LOG_DEBUG("[Class::Class] Scanning ", assemblies_count, " assemblies...");
 
     for (size_t i = 0; i < assemblies_count; ++i) {
         const auto assembly = assemblies[i];
         const auto image = Il2CppAPI::il2cpp_assembly_get_image(assembly);
         if (!image) {
-            ILRL_LOG_WARN("[Class::Class] Assembly at index ", i, " has no image");
             continue;
         }
 
-        const char* assembly_name = Il2CppAPI::il2cpp_image_get_name(image);
-        ILRL_LOG_TRACE("[Class::Class] Checking assembly: ",
-                       assembly_name ? assembly_name : "unnamed", " at index: ", i);
-
-        void* found_class = Il2CppAPI::il2cpp_class_from_name(image, Namespace.c_str(), Name.c_str());
-        if (found_class) {
+        if (void* found_class = Il2CppAPI::il2cpp_class_from_name(image, Namespace.c_str(), Name.c_str())) {
             _class = found_class;
-            ILRL_LOG_INFO("[Class::Class] Found class in assembly: ",
-                          assembly_name ? assembly_name : "unnamed",
-                          " at index: ", i, " address: ", _class);
             return;
         }
     }
 
-    ILRL_LOG_ERROR("[Class::Class] Failed to locate class: ", Namespace, ".", Name,
-                   " after scanning ", assemblies_count, " assemblies");
+    ILRL_LOG_ERROR("[Class] Failed to locate: ", Namespace, ".", Name);
 }
+
 
 std::string IL2CppReflector::Class::ToString() const {
     if (!_class) {
@@ -222,8 +201,6 @@ std::vector<IL2CppReflector::Class> IL2CppReflector::Class::GetInnerClasses() co
         return classes;
     }
 
-    ILRL_LOG_DEBUG("Getting inner classes for", ToString());
-
     void *currentClass = _class;
     do {
         void *iter = nullptr;
@@ -234,10 +211,8 @@ std::vector<IL2CppReflector::Class> IL2CppReflector::Class::GetInnerClasses() co
             count++;
         }
 
-        ILRL_LOG_DEBUG("Found", count, "nested types in current class");
     } while ((currentClass = Il2CppAPI::il2cpp_class_get_parent(currentClass)) != nullptr);
 
-    ILRL_LOG_INFO("Found", classes.size(), "inner classes total");
     return classes;
 }
 
@@ -247,7 +222,6 @@ IL2CppReflector::Class IL2CppReflector::Class::GetInnerClass(const std::string &
         return {};
     }
 
-    ILRL_LOG_DEBUG("Searching for inner class", Name, "in", ToString());
 
     const auto classes = GetInnerClasses();
     if (classes.empty()) {
@@ -256,13 +230,11 @@ IL2CppReflector::Class IL2CppReflector::Class::GetInnerClass(const std::string &
     }
 
     for (const auto &cls: classes) {
-        if (cls.GetName() == Name) {
-            ILRL_LOG_INFO("Found inner class", Name);
+        if (cls.GetName() == Name)
             return cls;
-        }
     }
 
-    ILRL_LOG_ERROR("Inner class", Name, "not found in", ToString());
+    ILRL_LOG_ERROR("Inner class ", Name, " not found in ", ToString());
     return {};
 }
 
@@ -273,8 +245,6 @@ std::vector<IL2CppReflector::Field> IL2CppReflector::Class::GetFields(const bool
         ILRL_LOG_WARN("Attempting GetFields() on null class");
         return fields;
     }
-
-    ILRL_LOG_DEBUG("Getting fields for", ToString(), "(includeParent:", ParentClass ? "true" : "false", ")");
 
     void *currentClass = _class;
     size_t totalFields = 0;
@@ -288,13 +258,11 @@ std::vector<IL2CppReflector::Field> IL2CppReflector::Class::GetFields(const bool
             count++;
         }
 
-        ILRL_LOG_DEBUG("Found", count, "fields in current class");
         totalFields += count;
 
         if (!ParentClass) break;
     } while ((currentClass = Il2CppAPI::il2cpp_class_get_parent(currentClass)) != nullptr);
 
-    ILRL_LOG_INFO("Found", totalFields, "fields total");
     return fields;
 }
 
@@ -304,14 +272,11 @@ IL2CppReflector::Field IL2CppReflector::Class::GetField(const std::string &Name)
         return {};
     }
 
-    ILRL_LOG_DEBUG("Looking for field", Name, "in class", ToString());
 
-    if (const auto field = Il2CppAPI::il2cpp_class_get_field_from_name(_class, Name.c_str())) {
-        ILRL_LOG_INFO("Found field", Name);
+    if (const auto field = Il2CppAPI::il2cpp_class_get_field_from_name(_class, Name.c_str()))
         return Field(field);
-    }
 
-    ILRL_LOG_ERROR("Field", Name, "not found in class", ToString());
+    ILRL_LOG_ERROR("Field ", Name, " not found in ", ToString());
     return {};
 }
 
@@ -322,8 +287,6 @@ std::vector<IL2CppReflector::Method> IL2CppReflector::Class::GetMethods(const bo
         ILRL_LOG_WARN("Attempting GetMethods() on null class");
         return methods;
     }
-
-    ILRL_LOG_DEBUG("Getting methods for", ToString(), "(includeParent:", ParentClass ? "true" : "false", ")");
 
     void *currentClass = _class;
     size_t totalMethods = 0;
@@ -337,13 +300,11 @@ std::vector<IL2CppReflector::Method> IL2CppReflector::Class::GetMethods(const bo
             count++;
         }
 
-        ILRL_LOG_DEBUG("Found ", count, " methods in current class");
         totalMethods += count;
 
         if (!ParentClass) break;
     } while ((currentClass = Il2CppAPI::il2cpp_class_get_parent(currentClass)) != nullptr);
 
-    ILRL_LOG_INFO("Found ", totalMethods, " methods total");
     return methods;
 }
 
@@ -353,43 +314,33 @@ IL2CppReflector::Method IL2CppReflector::Class::GetMethod(const std::string &Nam
         return {};
     }
 
-    ILRL_LOG_DEBUG("Looking for method ", Name, " in class ", ToString(), "(args_count:", args_count, ")");
-
     if (args_count != -1) {
-        if (void *method = Il2CppAPI::il2cpp_class_get_method_from_name(_class, Name.c_str(), args_count)) {
-            ILRL_LOG_INFO("Found method ", Name, " with ", args_count, " parameters");
+        if (void *method = Il2CppAPI::il2cpp_class_get_method_from_name(_class, Name.c_str(), args_count))
             return Method(method);
-        }
 
-        ILRL_LOG_ERROR("Method", Name, "with", args_count, "parameters not found");
+        ILRL_LOG_ERROR("Method ", Name, " with ", args_count, " parameters not found");
         return {};
     }
 
     const auto methods = GetMethods(false);
     for (const auto &methodBase: methods) {
         if (const char *methodName = Il2CppAPI::il2cpp_method_get_name(methodBase.GetMethodInfo());
-                methodName && Name == methodName) {
-            ILRL_LOG_INFO("Found method ", Name, "(parameter count unspecified)");
+                methodName && Name == methodName)
             return methodBase;
-        }
     }
 
-    ILRL_LOG_ERROR("Method", Name, "not found (parameter count unspecified)");
+    ILRL_LOG_ERROR("Method ", Name, " not found (parameter count unspecified)");
     return {};
 }
 
 IL2CppReflector::Method IL2CppReflector::Class::GetMethod(const std::string& Name,
                                                           const std::vector<std::string>& args_name) const {
-    ILRL_LOG_DEBUG("[Class::GetMethod] Searching for method:", Name,
-                   "with", args_name.size(), "parameters");
-
     if (Name.empty()) {
         ILRL_LOG_ERROR("[Class::GetMethod] Empty method name provided");
         return {};
     }
 
     const auto methods = GetMethods(false);
-    ILRL_LOG_TRACE("[Class::GetMethod] Found", methods.size(), "methods to search");
 
     for (const auto& methodBase : methods) {
         const char* methodName = Il2CppAPI::il2cpp_method_get_name(methodBase.GetMethodInfo());
@@ -399,15 +350,10 @@ IL2CppReflector::Method IL2CppReflector::Class::GetMethod(const std::string& Nam
             continue;
         }
 
-        if (Name != methodName) {
-            ILRL_LOG_TRACE("[Class::GetMethod] Name mismatch - searching:", Name,
-                           "found:", methodName);
+        if (Name != methodName)
             continue;
-        }
 
         auto count = Il2CppAPI::il2cpp_method_get_param_count(methodBase.GetMethodInfo());
-        ILRL_LOG_DEBUG("[Class::GetMethod] Candidate method:", methodName,
-                       "Parameter count: ", count);
 
         if (count != static_cast<uint32_t>(args_name.size())) {
             ILRL_LOG_WARN("[Class::GetMethod] Parameter count mismatch - expected: ",
@@ -418,21 +364,17 @@ IL2CppReflector::Method IL2CppReflector::Class::GetMethod(const std::string& Nam
         bool allParamsMatch = true;
         for (int i = 0; i < count; ++i) {
             if (std::string arg_name = Il2CppAPI::il2cpp_method_get_param_name(methodBase.GetMethodInfo(), i); args_name[i] != arg_name) {
-                ILRL_LOG_DEBUG("[Class::GetMethod] Parameter name mismatch at index: ", i,
-                               "expected:", args_name[i], "actual:", arg_name);
                 allParamsMatch = false;
                 break;
             }
         }
 
-        if (allParamsMatch) {
-            ILRL_LOG_DEBUG("[Class::GetMethod] Found matching method: ", methodName);
+        if (allParamsMatch)
             return methodBase;
-        }
     }
 
-    ILRL_LOG_ERROR("[Class::GetMethod] Method not found:", Name,
-                   "with specified parameters");
+    ILRL_LOG_ERROR("[Class::GetMethod] Method not found: ", Name,
+                   " with specified parameters");
     return {};
 }
 
@@ -443,8 +385,6 @@ std::vector<IL2CppReflector::Property> IL2CppReflector::Class::GetProperties(con
         ILRL_LOG_WARN("Attempting GetProperties() on null class");
         return properties;
     }
-
-    ILRL_LOG_DEBUG("Getting properties for", ToString(), "(includeParent:", ParentClass ? "true" : "false", ")");
 
     void *currentClass = _class;
     size_t totalProperties = 0;
@@ -458,13 +398,11 @@ std::vector<IL2CppReflector::Property> IL2CppReflector::Class::GetProperties(con
             count++;
         }
 
-        ILRL_LOG_DEBUG("Found", count, "properties in current class");
         totalProperties += count;
 
         if (!ParentClass) break;
     } while ((currentClass = Il2CppAPI::il2cpp_class_get_parent(currentClass)) != nullptr);
 
-    ILRL_LOG_INFO("Found", totalProperties, "properties total");
     return properties;
 }
 
@@ -474,16 +412,14 @@ IL2CppReflector::Property IL2CppReflector::Class::GetProperty(const std::string 
         return {};
     }
 
-    ILRL_LOG_DEBUG("Looking for property", Name, "in class", ToString());
-
     if (void *property = Il2CppAPI::il2cpp_class_get_property_from_name(_class, Name.c_str())) {
-        ILRL_LOG_INFO("Found property", Name);
         return Property(property);
     }
 
-    ILRL_LOG_ERROR("Property", Name, "not found in class", ToString());
+    ILRL_LOG_ERROR("Property ", Name, " not found in class ", ToString());
     return {};
 }
+
 
 IL2CppReflector::Class IL2CppReflector::Class::GetGeneric(const std::vector<void *> &templateTypes) const {
     if (!_class) {
@@ -492,33 +428,33 @@ IL2CppReflector::Class IL2CppReflector::Class::GetGeneric(const std::vector<void
     }
 
     if (!IsGeneric()) {
-        ILRL_LOG_ERROR("Class", ToString(), "is not generic");
+        ILRL_LOG_ERROR("Class ", ToString(), " is not generic");
         return *this;
     }
 
-    ILRL_LOG_DEBUG("Creating generic instance of ", ToString(), " with ", templateTypes.size(), " type arguments");
-
-    const auto monoType = Il2CppAPI::il2cpp_type_get_object(Il2CppAPI::il2cpp_class_get_type(_class));
+    const auto monoType = GetMonoType();
     if (!monoType) {
         ILRL_LOG_ERROR("Failed to get mono type for class ", ToString());
         return *this;
     }
 
-    const auto args = UnityStruct::array<void *>::create(templateTypes);
-    if (!args) {
+    const auto typeArray = CreateTypeArrayFromVector(templateTypes);
+    if (!typeArray) {
         ILRL_LOG_ERROR("Failed to create type arguments array");
         return *this;
     }
 
-    const auto genericType = MakeGenericType.Invoke<void *>(monoType, args.get());
+    const auto genericType = MakeGenericType.Invoke<void *>(monoType, typeArray);
     if (!genericType) {
         ILRL_LOG_ERROR("Failed to create generic type instance");
         return *this;
     }
 
-    ILRL_LOG_INFO("Successfully created generic type instance");
-    return Class(genericType);
+
+    return Class(Il2CppAPI::il2cpp_class_from_system_type(genericType));
 }
+
+
 
 void *IL2CppReflector::Class::CreateNewInstance() const {
     if (!_class) {
@@ -527,10 +463,45 @@ void *IL2CppReflector::Class::CreateNewInstance() const {
     }
 
     void *instance = Il2CppAPI::il2cpp_object_new(_class);
-    if (instance) {
-        ILRL_LOG_INFO("Created new instance of ", ToString(), " at ", instance);
-    } else {
+    if (!instance) {
         ILRL_LOG_ERROR("Failed to create instance of ", ToString());
     }
     return instance;
+}
+
+void * IL2CppReflector::CreateTypeArrayFromVector(const std::vector<void *> &typeObjects) {
+    if (typeObjects.empty())
+        return nullptr;
+
+    auto* typeClass = Il2CppAPI::il2cpp_class_from_name(
+        Il2CppAPI::il2cpp_get_corlib(), "System", "Type");
+
+    if (!typeClass)
+        return nullptr;
+
+    auto* typeArray = Il2CppAPI::il2cpp_array_new(typeClass, typeObjects.size());
+
+    const int elementSize = Il2CppAPI::il2cpp_array_element_size(typeClass);
+    char* arrayData = static_cast<char*>(typeArray) + Il2CppAPI::il2cpp_array_object_header_size();
+
+    for (size_t i = 0; i < typeObjects.size(); ++i)
+    {
+        if (typeObjects[i])
+        {
+            const auto elementPtr = reinterpret_cast<void **>(arrayData + i * elementSize);
+            *elementPtr = typeObjects[i];
+            Il2CppAPI::il2cpp_gc_wbarrier_set_field(typeArray, static_cast<void **>(elementPtr), typeObjects[i]);
+        }
+    }
+
+    return typeArray;
+}
+
+
+void * IL2CppReflector::Class::GetMonoType() const {
+    return Il2CppAPI::il2cpp_type_get_object(static_cast<char*>(_class) + sizeof(void*) * 4);
+}
+
+void * IL2CppReflector::Class::GetIl2cppClass() const {
+    return _class;
 }
