@@ -47,6 +47,8 @@
 #include "IL2CppReflector/api/il2cpp.hpp"
 #include "IL2CppReflector/api/vm_runtime_info.hpp"
 
+#include "IL2CppReflector/tool.h"
+
 const void *IL2CppReflector::GetImage(const std::string &Name) {
     const auto domain = Il2CppAPI::il2cpp_domain_get();
     if (!domain) {
@@ -467,6 +469,12 @@ void *IL2CppReflector::Class::CreateNewInstance() const {
         ILRL_LOG_ERROR("Failed to create instance of ", ToString());
     }
     return instance;
+}
+
+IL2CppReflector::Class IL2CppReflector::GetClass(const std::string &ImageName, const std::string &FullName){
+    const auto fullName = tool::splitAtLast(FullName);
+    return IL2CppReflector::Class(std::string(fullName.first), std::string(fullName.second),
+                                  IL2CppReflector::GetImage(ImageName));
 }
 
 void * IL2CppReflector::CreateTypeArrayFromVector(const std::vector<void *> &typeObjects) {

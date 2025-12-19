@@ -96,6 +96,13 @@ namespace IL2CppReflector {
 
         [[nodiscard]] void* GetIl2cppClass() const;
     };
+    /**
+     * 创建 IL2CppReflector::Class
+     * @param ImageName Image 名称
+     * @param FullName 类的完整名称(命名空间 + 类名)
+     * @return
+     */
+    IL2CppReflector::Class GetClass(const std::string &ImageName, const std::string &FullName);
 
     void* CreateTypeArrayFromVector(const std::vector<void*>& typeObjects);
 }

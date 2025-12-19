@@ -12,7 +12,9 @@ add_library(IL2CppReflector STATIC
         src/method.cpp
         src/struct.cpp
         src/type.cpp
-        src/property.cpp)
+        src/property.cpp
+        src/tool.cpp
+)
 
 target_include_directories(IL2CppReflector
         PUBLIC
